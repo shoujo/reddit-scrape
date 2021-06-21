@@ -2,3 +2,5 @@
 *.ipynb
 *.ini
 *.csv
+.DS_Store
+src/usernames.db

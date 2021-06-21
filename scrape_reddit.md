@@ -5,6 +5,8 @@ import json
 import requests
 import hashlib
 import configparser
+import sqlite3
+import unidecode
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
@@ -61,8 +63,11 @@ def config_section_map(section):
 
 ```python
 def get_username():
-    # read from db (!)
-        # eventually..
+    con = sqlite3.connect('./src/usernames.db')
+    cur = con.cursor()
+    for row in cur.execute('SELECT * FROM usernames'):
+        for r in row:
+            print(unidecode.unidecode(r))
     return config_section_map('1')['1']
 ```
 
@@ -94,20 +99,23 @@ def sort_reddit_data(request):
 ```
 
 ```python
+def generate_out_file(username):
+    if csv_exists(username):
+        pass
+    else:
+        try:
+            df = pd.DataFrame(columns=['sub', 'author', 'title', 'text', 'score', 'date', 'time'])
+            df.to_csv('./out/' + username + '.csv', mode='w', index=False)
+        except:
+            return "unable to generate outfile!"
+```
+
+```python
 def scrape_reddit(username):
     def generate_url(username):
         base_url = 'https://www.reddit.com/user/'
         end_url = '/submitted.json'
         return base_url + username + end_url
-    def generate_out_file(username):
-        if csv_exists(username):
-            pass
-        else:
-            try:
-                df = pd.DataFrame(columns=['sub', 'author', 'title', 'text', 'score', 'date', 'time'])
-                df.to_csv(username + '.csv', mode='w', index=False)
-            except:
-                return "unable to generate outfile!"
     def req_reddit_data(url, headers):
         if url:
             try:
@@ -115,8 +123,6 @@ def scrape_reddit(username):
             except:
                 return "unable to make request!"
         return request
-    
-    generate_out_file(username)
     url = generate_url(username)
     headers = {'User-agent': 'Broad Arrow Scraper v0.1'}
     return req_reddit_data(url, headers)
@@ -124,10 +130,18 @@ def scrape_reddit(username):
 
 ```python
 def main():
-    target = get_username()
-    posts = sort_reddit_data(scrape_reddit(target))
-    post_dataframe = data_to_dataframe(posts)
-    post_dataframe.to_csv(target + '.csv', mode="a", header=False, index=False)
+    con = sqlite3.connect('./src/usernames.db')
+    cur = con.cursor()
+    for usernames in cur.execute('SELECT * FROM usernames'):
+        for target in usernames:
+            try:
+                posts = sort_reddit_data(scrape_reddit(target))
+                if posts:
+                    generate_out_file(target)
+                    post_dataframe = data_to_dataframe(posts)
+                    post_dataframe.to_csv('./out/' + target + '.csv', mode='a', header=False, index=False)
+            except:
+                pass
 ```
 
 ```python
