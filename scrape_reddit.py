@@ -17,19 +17,25 @@ class RedditPost:
         self.title = post['data']['title']
         self.text = post['data']['selftext']
         self.score = post['data']['score']
-        self.date = convert_timestamp("date", post['data']['created_utc'])
-        self.time = convert_timestamp("time", post['data']['created_utc'])
-        
+        self.date = post['data']['created_utc']
+        self.time = post['data']['created_utc']
         
     def _asdict(self):
+        def get_date(timestamp):
+            return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d')
+    
+        def get_time(timestamp):
+            return datetime.utcfromtimestamp(timestamp).strftime('%H:%M')
+        
+        
         post_dict = {
             'sub': self.sub,
             'author': self.author,
             'title': self.title,
-            'text': self.text[0:50],
+            'text': self.text,
             'score': self.score,
-            'date': self.date,
-            'time': self.time
+            'date': get_date(self.date),
+            'time': get_time(self.time)
         }
         return post_dict
 
@@ -54,23 +60,6 @@ def get_username():
     # read from db (!)
         # eventually..
     return config_section_map('1')['1']
-
-
-def convert_timestamp(action, timestamp):
-    def get_date(timestamp):
-        return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d')
-
-    def get_time(timestamp):
-        return datetime.utcfromtimestamp(timestamp).strftime('%H:%M')
-    
-    def invalid_timestamp(timestamp):
-        return "invalid timestamp argument!"
-        
-    switcher = {
-        "date": get_date(timestamp),
-        "time": get_time(timestamp)
-    }
-    return switcher.get(action, invalid_timestamp)
 
 
 def csv_exists(username):
@@ -108,7 +97,7 @@ def scrape_reddit(username):
         else:
             try:
                 df = pd.DataFrame(columns=['sub', 'author', 'title', 'text', 'score', 'date', 'time'])
-                df.to_csv(username + '.csv', mode='w')
+                df.to_csv(username + '.csv', mode='w', index=False)
             except:
                 return "unable to generate outfile!"
     def req_reddit_data(url, headers):
@@ -129,7 +118,7 @@ def main():
     target = get_username()
     posts = sort_reddit_data(scrape_reddit(target))
     post_dataframe = data_to_dataframe(posts)
-    post_dataframe.to_csv(target + '.csv', mode="a", header=False)
+    post_dataframe.to_csv(target + '.csv', mode="a", header=False, index=False)
 
 
 if __name__ == "__main__":
